@@ -1,12 +1,9 @@
 import requests
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
-
 # Замените URL на ваш адрес локального сервера
-
-
 
 
 def confirm_email(url):
@@ -31,6 +28,7 @@ def generate_ecc_key_pair():
     public_key = private_key.public_key()
     return private_key, public_key
 
+
 def encrypt_aes_key_with_ecc(aes_key, public_key_hex):
     public_key_bytes = bytes.fromhex(public_key_hex)
     public_key = serialization.load_der_public_key(public_key_bytes)
@@ -42,6 +40,7 @@ def encrypt_aes_key_with_ecc(aes_key, public_key_hex):
     )
     return encrypted_aes_key.hex()
 
+
 def upload_file(file_path, encrypted_aes_key, access_token):
     # Пример загрузки файла на сервер
     headers = {'Authorization': f'Bearer {access_token}'}
@@ -51,6 +50,7 @@ def upload_file(file_path, encrypted_aes_key, access_token):
         response = requests.post(f'{base_url}/upload', files=files, data=data, headers=headers)
     print(response.text)
 
+
 def download_file(file_id, access_token):
     # Пример скачивания файла с сервера
     headers = {'Authorization': f'Bearer {access_token}'}
@@ -59,14 +59,13 @@ def download_file(file_id, access_token):
         file.write(response.content)
     print('File downloaded successfully.')
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     base_url = 'http://127.0.0.1:5000'
 
     username = input("Username: ")
     password = input("Password: ")
     email = input("Email: ")
-
 
     # # # Регистрация нового пользователя
     # register_data = {'username': username, 'password': password, 'email': email}
@@ -83,10 +82,22 @@ if __name__ == '__main__':
     print(login_response.text)
     access_token = login_response.json().get('access_token')
 
+
+
+
+
+
+
     # Доступ к защищенному ресурсу
     headers = {'Authorization': f'Bearer {access_token}'}
     protected_response = requests.get(f'{base_url}/protected', headers=headers)
     print(protected_response.json())
+
+
+
+
+
+
 
     private_key, public_key = generate_ecc_key_pair()
     public_key_hex = public_key.public_bytes(
@@ -105,6 +116,5 @@ if __name__ == '__main__':
 
     # Загрузка файла на сервер
     upload_file(file_path, encrypted_aes_key_hex, access_token)
-
 
 # dekhtiar.8864774@stud.op.edu.ua
