@@ -5,8 +5,8 @@ import os
 
 
 def aes_generate_key():
-    aes_key = urlsafe_b64encode(os.urandom(32))  # 32 bytes key for AES-256
-    return aes_key.decode('utf-8')
+    aes_key = os.urandom(32)  # 32 bytes key for AES-256
+    return urlsafe_b64encode(aes_key).decode('utf-8')
 
 
 def aes_generate_iv():
@@ -15,36 +15,19 @@ def aes_generate_iv():
 
 
 def aes_encrypt(data, aes_key):
-    aes_key = urlsafe_b64decode(aes_key)
+    aes_key_bytes = urlsafe_b64decode(aes_key)
     iv = aes_generate_iv()
-    cipher = Cipher(algorithms.AES(aes_key), modes.CFB(iv), backend=default_backend())
+    cipher = Cipher(algorithms.AES(aes_key_bytes), modes.CFB(iv), backend=default_backend())
     encryptor = cipher.encryptor()
-    ciphertext = encryptor.update(data.encode('utf-8')) + encryptor.finalize()
-    return urlsafe_b64encode(iv + ciphertext).decode('utf-8')
+    ciphertext = encryptor.update(data) + encryptor.finalize()
+    return iv + ciphertext
 
 
 def aes_decrypt(ciphertext, aes_key):
-    aes_key = urlsafe_b64decode(aes_key)
-    data = urlsafe_b64decode(ciphertext)
+    aes_key_bytes = urlsafe_b64decode(aes_key)
+    data = ciphertext
     iv, ciphertext = data[:16], data[16:]
-    cipher = Cipher(algorithms.AES(aes_key), modes.CFB(iv), backend=default_backend())
+    cipher = Cipher(algorithms.AES(aes_key_bytes), modes.CFB(iv), backend=default_backend())
     decryptor = cipher.decryptor()
     plaintext = decryptor.update(ciphertext) + decryptor.finalize()
-    return plaintext.decode('utf-8')
-
-
-# # Пример использования:
-# key = generate_key()
-# text = "djbobo"
-# print(key)
-#
-#
-# # Шифрование
-# encrypted_text = encrypt(text, key)
-# print(f"Зашифрованный текст: {encrypted_text}")
-#
-#
-# # Дешифрование
-# decrypted_text = decrypt(encrypted_text, key)
-# print(f"Расшифрованный текст: {decrypted_text}")
-
+    return plaintext
