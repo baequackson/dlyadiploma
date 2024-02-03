@@ -117,6 +117,8 @@ def generate_key():
 @app.route('/upload', methods=['POST'])
 @jwt_required()
 def upload_file():
+    current_user = get_jwt_identity()
+    user = User.query.filter_by(username=current_user).first()
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
 
@@ -127,7 +129,7 @@ def upload_file():
 
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], f'{user.id}_{filename}'))
         return jsonify({'message': 'File uploaded successfully'}), 200
     else:
         return jsonify({'error': 'File type not allowed'}), 400
@@ -142,7 +144,7 @@ def download_file(filename):
     public_key = data.get('public_key')
     aes_key = user.public_key
     encrypted_aes_key = rsa_encrypt_text(public_key, aes_key)
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{user.id}_{filename}')
     if os.path.exists(file_path):
         response = send_file(file_path, as_attachment=True)
         response.headers['encrypted_aes_key'] = encrypted_aes_key
