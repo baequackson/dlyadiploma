@@ -36,12 +36,16 @@ def upload_file(file_path, aes_key, access_token):
                                  )
 
 
-def download_file(file_id, access_token):
+def download_file(file_id, access_token, public_key, private_key):
+    data = {'public_key': public_key}
     # Пример скачивания файла с сервера
     headers = {'Authorization': f'Bearer {access_token}'}
-    response = requests.get(f'{base_url}/download/{file_id}', headers=headers)
-    with open(f'downloaded_file_{file_id}.txt', 'wb') as file:
-        file.write(response.content)
+    response = requests.post(f'{base_url}/download/{file_id}', headers=headers, json=data)
+    encrypted_aes_key = response.headers.get('encrypted_aes_key')
+    aes_key = rsa_decrypt_text(private_key, encrypted_aes_key)
+
+    with open(f'downloaded_file_{file_id}', 'wb') as file:
+        file.write(aes_decrypt(response.content, aes_key))
     print('File downloaded successfully.')
 
 
@@ -69,22 +73,27 @@ if __name__ == '__main__':
     print(login_response.text)
     access_token = login_response.json().get('access_token')
 
+    # private_key, public_key = rsa_generate_key_pair()
+    # data = {'public_key': public_key}
+    # headers = {'Authorization': f'Bearer {access_token}'}
+    # aes_key_response = requests.post(f'{base_url}/generate_key', json=data, headers=headers)
+    # if aes_key_response.status_code != 200:
+    #     raise Exception
+    #
+    # encrypted_aes_key = aes_key_response.json().get('encrypted_aes_key')
+    # aes_key = rsa_decrypt_text(private_key, encrypted_aes_key)
+    #
+    # # Необходимо получить путь к файлу, который вы хотите загрузить
+    # file_path = 'file.txt'
+    #
+    #
+    # # Загрузка файла на сервер
+    # upload_file(file_path, aes_key, access_token)
+
     private_key, public_key = rsa_generate_key_pair()
-    data = {'public_key': public_key}
-    headers = {'Authorization': f'Bearer {access_token}'}
-    aes_key_response = requests.post(f'{base_url}/generate_key', json=data, headers=headers)
-    if aes_key_response.status_code != 200:
-        raise Exception
-
-    encrypted_aes_key = aes_key_response.json().get('encrypted_aes_key')
-    aes_key = rsa_decrypt_text(private_key, encrypted_aes_key)
-
-    # Необходимо получить путь к файлу, который вы хотите загрузить
-    file_path = 'file.txt'
+    download_file('file.txt', access_token, public_key, private_key)
 
 
-    # Загрузка файла на сервер
-    upload_file(file_path, aes_key, access_token)
 
 
 # dekhtiar.8864774@stud.op.edu.ua

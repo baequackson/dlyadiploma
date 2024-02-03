@@ -107,7 +107,6 @@ def generate_key():
     public_key = data.get('public_key')
     aes_key = aes_generate_key()
     encrypted_aes_key = rsa_encrypt_text(public_key, aes_key)
-
     user = User.query.filter_by(username=current_user).first()
     user.public_key = aes_key
     db.session.commit()
@@ -134,12 +133,20 @@ def upload_file():
         return jsonify({'error': 'File type not allowed'}), 400
 
 
-@app.route('/download/<filename>', methods=['GET'])
+@app.route('/download/<filename>', methods=['POST'])
 @jwt_required()
 def download_file(filename):
+    current_user = get_jwt_identity()
+    user = User.query.filter_by(username=current_user).first()
+    data = request.get_json()
+    public_key = data.get('public_key')
+    aes_key = user.public_key
+    encrypted_aes_key = rsa_encrypt_text(public_key, aes_key)
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(file_path):
-        return send_file(file_path, as_attachment=True)
+        response = send_file(file_path, as_attachment=True)
+        response.headers['encrypted_aes_key'] = encrypted_aes_key
+        return response
     else:
         return jsonify({'error': 'File not found'}), 404
 
