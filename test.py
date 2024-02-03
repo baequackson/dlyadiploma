@@ -1,4 +1,4 @@
-from ecc import *
+from ecdh import *
 
 # Пример использования:
 

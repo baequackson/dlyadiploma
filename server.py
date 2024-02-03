@@ -7,7 +7,7 @@ from flask_jwt_extended import (JWTManager, create_access_token,
                                 get_jwt_identity, jwt_required)
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
-from ecc import *
+from ecdh import *
 from aes import *
 
 app = Flask(__name__)
@@ -120,7 +120,7 @@ def generate_key():
     user.public_key = aes_key
     db.session.commit()
 
-    return jsonify({'public_key': public_key_hex}), 200
+    # return jsonify({'public_key': public_key_hex}), 200
 
 
 @app.route('/upload', methods=['POST'])
