@@ -1,5 +1,7 @@
 import requests
 from rsa import *
+from aes import *
+from io import BytesIO
 
 
 # Замените URL на ваш адрес локального сервера
@@ -22,14 +24,16 @@ def confirm_email(url):
         print('Ошибка подтверждения')
 
 
-def upload_file(file_path, encrypted_aes_key, access_token):
-    # Пример загрузки файла на сервер
+def upload_file(file_path, aes_key, access_token):
+    with open(file_path, 'rb') as file:
+        file_data = file.read()
+    encrypted_file = BytesIO(aes_encrypt(file_data, aes_key))
     headers = {'Authorization': f'Bearer {access_token}'}
     with open(file_path, 'rb') as file:
-        files = {'file': file}
-        data = {'encrypted_aes_key': encrypted_aes_key}
-        response = requests.post(f'{base_url}/upload', files=files, data=data, headers=headers)
-    print(response.text)
+        files = {'file': (file_path, encrypted_file)}
+        response = requests.post(f'{base_url}/upload', files=files,
+                                 headers=headers
+                                 )
 
 
 def download_file(file_id, access_token):
@@ -48,14 +52,16 @@ if __name__ == '__main__':
     password = input("Password: ")
     email = input("Email: ")
 
-    # Регистрация нового пользователя
-    register_data = {'username': username, 'password': password, 'email': email}
-    register_response = requests.post(f'{base_url}/register', json=register_data)
-    if register_response.status_code != 201:
-        print(register_response.json())
-    url = input('Введите ссылку подтверждения: ')
+    # # # Регистрация нового пользователя
+    # register_data = {'username': username, 'password': password, 'email': email}
+    # register_response = requests.post(f'{base_url}/register', json=register_data)
+    # if register_response.status_code != 201:
+    #     print(register_response.json())
+    # url = input('Введите ссылку подтверждения: ')
+    #
+    # confirm_email(url)
 
-    confirm_email(url)
+
 
     # Вход пользователя
     login_data = {'username': username, 'password': password}
@@ -65,21 +71,20 @@ if __name__ == '__main__':
 
     private_key, public_key = rsa_generate_key_pair()
     data = {'public_key': public_key}
-
-    aes_key_response = requests.post(f'{base_url}/generate_key', json=data)
+    headers = {'Authorization': f'Bearer {access_token}'}
+    aes_key_response = requests.post(f'{base_url}/generate_key', json=data, headers=headers)
     if aes_key_response.status_code != 200:
         raise Exception
 
     encrypted_aes_key = aes_key_response.json().get('encrypted_aes_key')
     aes_key = rsa_decrypt_text(private_key, encrypted_aes_key)
 
-    # # Необходимо получить путь к файлу, который вы хотите загрузить
-    # file_path = 'file.txt'
-    #
-    # # Необходимо получить токен доступа от сервера после аутентификации
-    # access_token = 'your_access_token'
-    #
-    # # Загрузка файла на сервер
-    # upload_file(file_path, encrypted_aes_key_hex, access_token)
+    # Необходимо получить путь к файлу, который вы хотите загрузить
+    file_path = 'file.txt'
+
+
+    # Загрузка файла на сервер
+    upload_file(file_path, aes_key, access_token)
+
 
 # dekhtiar.8864774@stud.op.edu.ua
