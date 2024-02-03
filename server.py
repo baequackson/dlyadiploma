@@ -7,7 +7,7 @@ from flask_jwt_extended import (JWTManager, create_access_token,
                                 get_jwt_identity, jwt_required)
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
-from ecdh import *
+from rsa import *
 from aes import *
 
 app = Flask(__name__)
@@ -86,13 +86,6 @@ def login():
     return jsonify(access_token=access_token)
 
 
-@app.route('/protected', methods=['GET'])
-@jwt_required()
-def protected_resource():
-    current_user = get_jwt_identity()
-    return jsonify(logged_in_as=current_user), 200
-
-
 @app.route('/confirm_email', methods=['POST'])
 def confirm_email():
     code = request.get_json().get('code')
@@ -112,15 +105,14 @@ def generate_key():
     current_user = get_jwt_identity()
     data = request.get_json()
     public_key = data.get('public_key')
-    aes_key = generate_aes_key()
-    encrypted_aes_key = encrypt_data(public_key, aes_key)
-
+    aes_key = aes_generate_key()
+    encrypted_aes_key = rsa_encrypt_text(public_key, aes_key)
 
     user = User.query.filter_by(username=current_user).first()
     user.public_key = aes_key
     db.session.commit()
 
-    # return jsonify({'public_key': public_key_hex}), 200
+    return jsonify({'encrypted_aes_key': encrypted_aes_key}), 200
 
 
 @app.route('/upload', methods=['POST'])
