@@ -1,4 +1,5 @@
 import os
+
 import random
 
 from emailchik import send_confirmation_email
