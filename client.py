@@ -36,17 +36,20 @@ def upload_file(file_path, aes_key, access_token):
                                  )
 
 
-def download_file(file_id, access_token, public_key, private_key):
-    data = {'public_key': public_key}
+def download_file(file_id, access_token, public_key, private_key, code):
+    data = {'public_key': public_key, 'code': code}
     # Пример скачивания файла с сервера
     headers = {'Authorization': f'Bearer {access_token}'}
     response = requests.post(f'{base_url}/download/{file_id}', headers=headers, json=data)
-    encrypted_aes_key = response.headers.get('encrypted_aes_key')
-    aes_key = rsa_decrypt_text(private_key, encrypted_aes_key)
+    if response.status_code == 200:
+        encrypted_aes_key = response.headers.get('encrypted_aes_key')
+        aes_key = rsa_decrypt_text(private_key, encrypted_aes_key)
 
-    with open(f'downloaded_file_{file_id}', 'wb') as file:
-        file.write(aes_decrypt(response.content, aes_key))
-    print('File downloaded successfully.')
+        with open(f'downloaded_file_{file_id}', 'wb') as file:
+            file.write(aes_decrypt(response.content, aes_key))
+        print('File downloaded successfully.')
+    else:
+        print(response.status_code)
 
 
 if __name__ == '__main__':
@@ -62,7 +65,7 @@ if __name__ == '__main__':
     # if register_response.status_code != 201:
     #     print(register_response.json())
     # url = input('Введите ссылку подтверждения: ')
-    #
+
     # confirm_email(url)
 
 
@@ -84,14 +87,15 @@ if __name__ == '__main__':
     aes_key = rsa_decrypt_text(private_key, encrypted_aes_key)
 
     # Необходимо получить путь к файлу, который вы хотите загрузить
-    file_path = 'file.txt'
+    file_path = 'file2.txt'
 
 
     # Загрузка файла на сервер
     upload_file(file_path, aes_key, access_token)
 
+    code = input()
     private_key, public_key = rsa_generate_key_pair()
-    download_file('file.txt', access_token, public_key, private_key)
+    download_file('file2.txt', access_token, public_key, private_key, code)
 
 
 

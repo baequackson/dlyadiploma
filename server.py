@@ -27,7 +27,9 @@ def generate_confirmation_code():
     return str(random.randint(100000, 999999))
 
 
-class User(db.Model):
+class Users(db.Model):
+    __tablename__ = "users"
+
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(80), nullable=False)
@@ -35,6 +37,15 @@ class User(db.Model):
     email_confirmed = db.Column(db.Boolean, default=False)
     email_confirmed_code = db.Column(db.String(6))
     public_key = db.Column(db.Text)
+
+
+class Files(db.Model):
+    __tablename__ = "files"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False)
+    filename = db.Column(db.String(255))
+    code = db.Column(db.String(6))
 
 
 def allowed_file(filename):
@@ -49,14 +60,14 @@ def register():
     password = data.get('password')
     email = data.get('email')
 
-    if User.query.filter_by(username=username).first():
+    if Users.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already exists'}), 400
 
-    if User.query.filter_by(email=email).first():
+    if Users.query.filter_by(email=email).first():
         return jsonify({'error': 'Email already exists'}), 400
 
     code = generate_confirmation_code()
-    new_user = User(username=username, password=password, email=email, email_confirmed_code=code)
+    new_user = Users(username=username, password=password, email=email, email_confirmed_code=code)
     db.session.add(new_user)
     db.session.commit()
 
@@ -71,7 +82,7 @@ def login():
     username = data.get('username')
     password = data.get('password')
 
-    user = User.query.filter_by(username=username).first()
+    user = Users.query.filter_by(username=username).first()
 
     if not user:
         return jsonify({'error': 'Invalid username or password'}), 401
@@ -86,17 +97,17 @@ def login():
     return jsonify(access_token=access_token)
 
 
-@app.route('/confirm_email', methods=['POST'])
+@app.route('/confirm_email', methods=['GET'])
 def confirm_email():
-    code = request.get_json().get('code')
-    user = User.query.filter_by(email_confirmed_code=code).first()
+    code = request.args.get('code')
+    user = Users.query.filter_by(email_confirmed_code=code).first()
 
-    if user:
+    if user and not user.email_confirmed:
         user.email_confirmed = True
         db.session.commit()
-        return jsonify({'message': 'Email confirmed successfully'}), 200
+        return 'Successful confirmed', 200
     else:
-        return jsonify({'error': 'Invalid or expired code'}), 400
+        return 'Error code', 404
 
 
 @app.route('/generate_key', methods=['POST'])
@@ -107,18 +118,35 @@ def generate_key():
     public_key = data.get('public_key')
     aes_key = aes_generate_key()
     encrypted_aes_key = rsa_encrypt_text(public_key, aes_key)
-    user = User.query.filter_by(username=current_user).first()
+    user = Users.query.filter_by(username=current_user).first()
     user.public_key = aes_key
     db.session.commit()
 
     return jsonify({'encrypted_aes_key': encrypted_aes_key}), 200
 
 
+@app.route('/files/<username>', methods=['GET'])
+@jwt_required()
+def get_user_files(username):
+    current_user = get_jwt_identity()
+    if current_user != username:
+        return jsonify({'error': 'Unauthorized access to user files'}), 403
+
+    user = Users.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    files = os.listdir(app.config['UPLOAD_FOLDER'])
+    user_files = [file.split('_', 1)[1] for file in files if file.startswith(f"{user.id}_")]
+
+    return jsonify({'files': user_files}), 200
+
+
 @app.route('/upload', methods=['POST'])
 @jwt_required()
 def upload_file():
     current_user = get_jwt_identity()
-    user = User.query.filter_by(username=current_user).first()
+    user = Users.query.filter_by(username=current_user).first()
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
 
@@ -130,6 +158,10 @@ def upload_file():
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], f'{user.id}_{filename}'))
+
+        new_file = Files(user_id=user.id, filename=filename.split("-")[-1], code=generate_confirmation_code())
+        db.session.add(new_file)
+        db.session.commit()
         return jsonify({'message': 'File uploaded successfully'}), 200
     else:
         return jsonify({'error': 'File type not allowed'}), 400
@@ -139,17 +171,25 @@ def upload_file():
 @jwt_required()
 def download_file(filename):
     current_user = get_jwt_identity()
-    user = User.query.filter_by(username=current_user).first()
+    user = Users.query.filter_by(username=current_user).first()
+    user_id = user.id
+
     data = request.get_json()
+
     public_key = data.get('public_key')
+    code = data.get('code')
     aes_key = user.public_key
+    db.session.commit()
     encrypted_aes_key = rsa_encrypt_text(public_key, aes_key)
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{user.id}_{filename}')
-    if os.path.exists(file_path):
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{user_id}_{filename}')
+
+    file = Files.query.filter_by(filename=filename, user_id=user_id).first()
+    if os.path.exists(file_path) and file is not None and code == file.code:
         response = send_file(file_path, as_attachment=True)
         response.headers['encrypted_aes_key'] = encrypted_aes_key
         return response
     else:
+        db.session.commit()
         return jsonify({'error': 'File not found'}), 404
 
 
