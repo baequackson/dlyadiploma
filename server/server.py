@@ -1,8 +1,5 @@
-import hashlib
 import os
 import random
-
-from flask import render_template
 
 from emailchik import send_confirmation_email
 from flask import Flask, jsonify, request, send_file
@@ -15,9 +12,11 @@ from aes import *
 
 app = Flask(__name__)
 
-app.config['JWT_SECRET_KEY'] = 'your_secret_key'
+# Настройки JWT
+app.config['JWT_SECRET_KEY'] = 'your_secret_key'  # Измените на свой секретный ключ в реальном проекте
 jwt = JWTManager(app)
 
+# Настройки базы данных (используется SQLite в данном примере)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -58,11 +57,7 @@ def allowed_file(filename):
 def register():
     data = request.get_json()
     username = data.get('username')
-    plain_password = data.get('password')  # Отримати незахешований пароль
-
-    # Хешування пароля
-    hashed_password = hashlib.sha256(plain_password.encode()).hexdigest()
-
+    password = data.get('password')
     email = data.get('email')
 
     if Users.query.filter_by(username=username).first():
@@ -72,7 +67,7 @@ def register():
         return jsonify({'error': 'Email already exists'}), 400
 
     code = generate_confirmation_code()
-    new_user = Users(username=username, password=hashed_password, email=email, email_confirmed_code=code)
+    new_user = Users(username=username, password=password, email=email, email_confirmed_code=code)
     db.session.add(new_user)
     db.session.commit()
 
@@ -94,8 +89,8 @@ def login():
 
     if not user.email_confirmed:
         return jsonify({'error': 'Email not confirmed'}), 401
-    hashed_password = hashlib.sha256(password.encode()).hexdigest()
-    if hashed_password != user.password:
+
+    if password != user.password:
         return jsonify({'error': 'Invalid username or password'}), 401
 
     access_token = create_access_token(identity=username)
@@ -149,87 +144,6 @@ def get_user_files(username):
 
 @app.route('/upload', methods=['POST'])
 @jwt_required()
-def upload_file_otp():
-    current_user = get_jwt_identity()
-    user = Users.query.filter_by(username=current_user).first()
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
-
-    file = request.files['file']
-
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
-
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], f'{user.id}_{filename}'))
-
-        new_file = Files(user_id=user.id, filename=filename.split("-")[-1], code=generate_confirmation_code())
-        db.session.add(new_file)
-        db.session.commit()
-        return jsonify({'message': 'File uploaded successfully'}), 200
-    else:
-        return jsonify({'error': 'File type not allowed'}), 400
-
-
-@app.route('/download/<filename>', methods=['POST'])
-@jwt_required()
-def download_file_otp(filename):
-    current_user = get_jwt_identity()
-    user = Users.query.filter_by(username=current_user).first()
-    user_id = user.id
-
-    data = request.get_json()
-
-    public_key = data.get('public_key')
-    code = data.get('code')
-    aes_key = user.public_key
-    db.session.commit()
-    encrypted_aes_key = rsa_encrypt_text(public_key, aes_key)
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{user_id}_{filename}')
-
-    file = Files.query.filter_by(filename=filename, user_id=user_id).first()
-    if os.path.exists(file_path) and file is not None and code == file.code:
-        response = send_file(file_path, as_attachment=True)
-        response.headers['encrypted_aes_key'] = encrypted_aes_key
-        return response
-    else:
-        db.session.commit()
-        return jsonify({'error': 'File not found'}), 404
-
-
-@app.route('/api/login', methods=['POST'])
-def authenticate():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-
-    user = Users.query.filter_by(username=username).first()
-    if user and user.password == password:
-
-        access_token = create_access_token(identity=username)
-        return jsonify(access_token=access_token), 200
-    else:
-
-        return jsonify({'error': 'Invalid username or password'}), 401
-
-
-@app.route('/otp_codes', methods=['GET'])
-@jwt_required()
-def otp_codes():
-    current_user = get_jwt_identity()
-    user = Users.query.filter_by(username=current_user).first()
-
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-
-    files = Files.query.filter_by(user_id=user.id).all()
-
-    return render_template('otp_codes.html', user=user, files=files)
-
-
-@app.route('/upload', methods=['POST'])
-@jwt_required()
 def upload_file():
     current_user = get_jwt_identity()
     user = Users.query.filter_by(username=current_user).first()
@@ -237,12 +151,14 @@ def upload_file():
         return jsonify({'error': 'No file part'}), 400
 
     file = request.files['file']
+
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], f'{user.id}_{filename}'))
+
         new_file = Files(user_id=user.id, filename=filename.split("-")[-1], code=generate_confirmation_code())
         db.session.add(new_file)
         db.session.commit()
@@ -259,12 +175,14 @@ def download_file(filename):
     user_id = user.id
 
     data = request.get_json()
+
     public_key = data.get('public_key')
     code = data.get('code')
     aes_key = user.public_key
     db.session.commit()
     encrypted_aes_key = rsa_encrypt_text(public_key, aes_key)
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{user_id}_{filename}')
+
     file = Files.query.filter_by(filename=filename, user_id=user_id).first()
     if os.path.exists(file_path) and file is not None and code == file.code:
         response = send_file(file_path, as_attachment=True)

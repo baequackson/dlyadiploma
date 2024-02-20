@@ -4,24 +4,20 @@ from aes import *
 from io import BytesIO
 
 
-# Замените URL на ваш адрес локального сервера
-
-
 def confirm_email(url):
-    # Получите код подтверждения из ссылки
+
     code = url.split("?code=")[-1]
     data = {'code': code}
-    # Подтвердите адрес электронной почты
+
     response = requests.post(
         f'{base_url}/confirm_email',
         json=data
     )
 
-    # Обработайте ответ
     if response.status_code == 200:
-        print('Email подтвержден')
+        print('Email підтверджено!')
     else:
-        print('Ошибка подтверждения')
+        print('Помилка підтвердження')
 
 
 def upload_file(file_path, aes_key, access_token):
@@ -38,7 +34,7 @@ def upload_file(file_path, aes_key, access_token):
 
 def download_file(file_id, access_token, public_key, private_key, code):
     data = {'public_key': public_key, 'code': code}
-    # Пример скачивания файла с сервера
+
     headers = {'Authorization': f'Bearer {access_token}'}
     response = requests.post(f'{base_url}/download/{file_id}', headers=headers, json=data)
     if response.status_code == 200:
@@ -59,18 +55,15 @@ if __name__ == '__main__':
     password = input("Password: ")
     email = input("Email: ")
 
-    # # # Регистрация нового пользователя
     # register_data = {'username': username, 'password': password, 'email': email}
     # register_response = requests.post(f'{base_url}/register', json=register_data)
     # if register_response.status_code != 201:
     #     print(register_response.json())
-    # url = input('Введите ссылку подтверждения: ')
+    # url = input('Введіть посилання підтвердження: ')
 
     # confirm_email(url)
 
 
-
-    # Вход пользователя
     login_data = {'username': username, 'password': password}
     login_response = requests.post(f'{base_url}/login', json=login_data)
     print(login_response.text)
@@ -86,11 +79,9 @@ if __name__ == '__main__':
     encrypted_aes_key = aes_key_response.json().get('encrypted_aes_key')
     aes_key = rsa_decrypt_text(private_key, encrypted_aes_key)
 
-    # Необходимо получить путь к файлу, который вы хотите загрузить
     file_path = 'file2.txt'
 
 
-    # Загрузка файла на сервер
     upload_file(file_path, aes_key, access_token)
 
     code = input()

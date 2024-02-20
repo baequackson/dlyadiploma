@@ -10,12 +10,12 @@ from io import BytesIO
 class CloudStorageApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Облачное Хранилище")
+        self.root.title("Хмарне Сховище")
 
-        self.register_button = tk.Button(root, text="Зарегистрироваться", command=self.open_register_window)
+        self.register_button = tk.Button(root, text="Реєстрація", command=self.open_register_window)
         self.register_button.pack(pady=10)
 
-        self.login_button = tk.Button(root, text="Войти", command=self.open_login_window)
+        self.login_button = tk.Button(root, text="Вхід", command=self.open_login_window)
         self.login_button.pack(pady=10)
 
         self.username = None
@@ -27,9 +27,9 @@ class CloudStorageApp:
 
         self.register_window.protocol("WM_DELETE_WINDOW", self.close_register_window)
 
-        self.register_window.title("Регистрация")
+        self.register_window.title("Реєстрація")
 
-        self.username_label = tk.Label(self.register_window, text="Имя пользователя:")
+        self.username_label = tk.Label(self.register_window, text="Ім'я користувача:")
         self.username_label.grid(row=0, column=0, sticky="e")
         self.username_entry = tk.Entry(self.register_window)
         self.username_entry.grid(row=0, column=1)
@@ -44,7 +44,7 @@ class CloudStorageApp:
         self.email_entry = tk.Entry(self.register_window)
         self.email_entry.grid(row=2, column=1)
 
-        self.register_button = tk.Button(self.register_window, text="Зарегистрироваться", command=self.register)
+        self.register_button = tk.Button(self.register_window, text="Зареєструватися", command=self.register)
         self.register_button.grid(row=3, column=0, columnspan=2, pady=10)
 
         self.back_button = tk.Button(self.register_window, text="Назад", command=self.close_register_window)
@@ -56,9 +56,9 @@ class CloudStorageApp:
 
         self.login_window.protocol("WM_DELETE_WINDOW", self.close_login_window)
 
-        self.login_window.title("Вход")
+        self.login_window.title("Вхід")
 
-        self.username_label = tk.Label(self.login_window, text="Имя пользователя:")
+        self.username_label = tk.Label(self.login_window, text="Ім'я користувача:")
         self.username_label.grid(row=0, column=0, sticky="e")
         self.username_entry = tk.Entry(self.login_window)
         self.username_entry.grid(row=0, column=1)
@@ -68,7 +68,7 @@ class CloudStorageApp:
         self.password_entry = tk.Entry(self.login_window, show="*")
         self.password_entry.grid(row=1, column=1)
 
-        self.login_button = tk.Button(self.login_window, text="Войти", command=self.login)
+        self.login_button = tk.Button(self.login_window, text="Увійти", command=self.login)
         self.login_button.grid(row=2, column=0, columnspan=2, pady=10)
 
         self.back_button = tk.Button(self.login_window, text="Назад", command=self.close_login_window)
@@ -88,58 +88,56 @@ class CloudStorageApp:
         email = self.email_entry.get()
 
         data = {'username': username, 'password': password, 'email': email}
-        response = requests.post('http://127.0.0.1:5000/register', json=data)
+        response = requests.post('https://9b05-213-200-40-238.ngrok-free.app/register', json=data)
 
         if response.status_code == 201:
-            messagebox.showinfo("Успех", "Регистрация прошла успешно! Проверьте вашу почту для подтверждения.")
+            messagebox.showinfo("Успіх", "Реєстрація пройшла успішно! Перевірте вашу пошту для підтвердження.")
             self.close_register_window()
             # self.open_confirmation_window(email)
         else:
-            messagebox.showerror("Ошибка", "Не удалось зарегистрироваться.")
+            messagebox.showerror("Помилка", "Не вдалося зареєструватися.")
 
     def login(self):
         username = self.username_entry.get()
         password = self.password_entry.get()
 
         data = {'username': username, 'password': password}
-        response = requests.post('http://127.0.0.1:5000/login', json=data)
+        response = requests.post('https://9b05-213-200-40-238.ngrok-free.app/login', json=data)
 
         if response.status_code == 200:
-            messagebox.showinfo("Успех", "Вход выполнен успешно!")
+            messagebox.showinfo("Успіх", "Вхід виконано успішно!")
             self.username = username
             self.access_token = response.json().get('access_token')
             self.close_login_window()
-            self.open_files_window()  # Открываем окно со списком файлов после успешного входа
+            self.open_files_window()
         else:
-            messagebox.showerror("Ошибка", "Неверное имя пользователя или пароль.")
+            messagebox.showerror("Помилка", "Невірне ім'я користувача або пароль.")
 
     def open_files_window(self):
         self.root.withdraw()
         self.files_window = tk.Toplevel()
-        self.files_window.title("Список файлов")
+        self.files_window.title("Список файлів")
 
-        # Получение списка файлов пользователя с сервера
         headers = {'Authorization': f'Bearer {self.access_token}'}
-        response = requests.get(f'http://127.0.0.1:5000/files/{self.username}',
-                                headers=headers)  # Запрос на получение списка файлов
+        response = requests.get(f'https://9b05-213-200-40-238.ngrok-free.app/files/{self.username}',
+                                headers=headers)
 
         if response.status_code == 200:
-            files = response.json().get('files')  # Получаем список файлов
+            files = response.json().get('files')
 
-            # Отображаем список файлов
-            self.files_label = tk.Label(self.files_window, text="Список загруженных файлов:")
+            self.files_label = tk.Label(self.files_window, text="Список завантажених файлів:")
             self.files_label.pack()
 
             for file in files:
-                file_name = file.split('_')[-1]  # Получаем имя файла из пути
+                file_name = file.split('_')[-1]
                 file_button = tk.Button(self.files_window, text=f"{file_name} ⬇️",
                                         command=lambda filename=file: self.request_code(filename))
                 file_button.pack(pady=5)
 
         else:
-            messagebox.showerror("Ошибка", "Ошибка сети.")
+            messagebox.showerror("Помилка", "Помилка Мережі.")
 
-        select_file_button = tk.Button(self.files_window, text="Выбрать файл", command=self.open_file_selection_window)
+        select_file_button = tk.Button(self.files_window, text="Обрати файл", command=self.open_file_selection_window)
         select_file_button.pack(pady=10)
 
     def close_files_window(self):
@@ -147,30 +145,30 @@ class CloudStorageApp:
         self.root.deiconify()
 
     def request_code(self, filename):
-        code = simpledialog.askstring("Ввод кода", f"Введите код для файла {filename}:")
+        code = simpledialog.askstring("Введення коду", f"Введіть код для файлу {filename}:")
         if code is not None:
             private_key, public_key = rsa_generate_key_pair()
             data = {'public_key': public_key, 'code': code}
             headers = {'Authorization': f'Bearer {self.access_token}'}
 
-            response = requests.post(f'http://127.0.0.1:5000/download/{filename}', headers=headers, json=data)
+            response = requests.post(f'https://9b05-213-200-40-238.ngrok-free.app/download/{filename}', headers=headers, json=data)
             if response.status_code == 200:
                 encrypted_aes_key = response.headers.get('encrypted_aes_key')
                 aes_key = rsa_decrypt_text(private_key, encrypted_aes_key)
 
                 with open(f'downloaded_file_{filename}', 'wb') as file:
                     file.write(aes_decrypt(response.content, aes_key))
-                messagebox.showinfo("Успех", f"Файл {filename} успешно скачан!")
+                messagebox.showinfo("Успіх", f"Файл {filename} успішно завантажено!")
             else:
-                messagebox.showerror("Ошибка", "Не удалось скачать файл.")
+                messagebox.showerror("Помилка", "Не вдалося завантажити файл.")
 
     def open_file_selection_window(self):
-        file_path = filedialog.askopenfilename()  # Диалоговое окно для выбора файла
+        file_path = filedialog.askopenfilename()
         if file_path:
             private_key, public_key = rsa_generate_key_pair()
             data = {'public_key': public_key}
             headers = {'Authorization': f'Bearer {self.access_token}'}
-            aes_key_response = requests.post('http://127.0.0.1:5000/generate_key', json=data, headers=headers)
+            aes_key_response = requests.post('https://9b05-213-200-40-238.ngrok-free.app/generate_key', json=data, headers=headers)
 
             encrypted_aes_key = aes_key_response.json().get('encrypted_aes_key')
             aes_key = rsa_decrypt_text(private_key, encrypted_aes_key)
@@ -181,10 +179,10 @@ class CloudStorageApp:
             headers = {'Authorization': f'Bearer {self.access_token}'}
             with open(file_path, 'rb') as file:
                 files = {'file': (file_path, encrypted_file)}
-                response = requests.post('http://127.0.0.1:5000/upload', files=files,
+                response = requests.post('https://9b05-213-200-40-238.ngrok-free.app/upload', files=files,
                                          headers=headers
                                          )
-            messagebox.showinfo("Выбран загружен", f"Файл {file_path} успешно загружен!")
+            messagebox.showinfo("Обран завантажений", f"Файл {file_path} успішно завантажений!")
             self.close_files_window()
             self.open_files_window()
 

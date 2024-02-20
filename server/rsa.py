@@ -51,3 +51,17 @@ def rsa_decrypt_text(private_key_pem, ciphertext):
         )
     )
     return decrypted_text.decode('utf-8')
+
+
+# # Пример использования:
+# private_key, public_key = generate_key_pair()
+# print(private_key)
+# print(public_key)
+#
+# plaintext = "Hello, RSA!"
+#
+# ciphertext = encrypt_text(public_key, plaintext)
+# print(f"Ciphertext: {ciphertext}")
+#
+# decrypted_text = decrypt_text(private_key, ciphertext)
+# print(f"Decrypted Text: {decrypted_text}")
